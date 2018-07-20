@@ -12,7 +12,8 @@ namespace StoryboarderUtility
 {
     public partial class ThumbForm : Form
     {
-        public const int ThumbMargin = 16;
+        public const int ThumbMargin = 32;
+        public const int SliderWidth = 8;
         public const int ThumbDiagonalSize = 600;
 
         public ThumbForm()
@@ -40,7 +41,6 @@ namespace StoryboarderUtility
             Storyboard loaded = ParseStoryboard(ofd.FileName);
             if (loaded != null) {
                 ReloadStoryboard(currStoryboard, loaded);
-                UpdateAllBoardControlSize();
 
                 SetupFileWatch();
 
@@ -63,33 +63,9 @@ namespace StoryboarderUtility
         float ImageDisplayScale { get { return scaleSlider.Value / 10.0f; } }
 
         private void scaleSlider_Scroll(object sender, EventArgs e) {
-            UpdateAllBoardControlSize();
+            panelThumb.Invalidate();
         }
 
-        void UpdateAllBoardControlSize() {
-            panelThumb.SuspendLayout();
-
-
-            Padding margin = new Padding((int)(ThumbMargin * ImageDisplayScale));
-
-            foreach (var b in currStoryboard.boards) {
-                int width = (int)(b.ImageWidth * ImageDisplayScale);
-                int height = (int)(b.ImageHeight * ImageDisplayScale);
-
-                b.imageControl.Width = width;
-                b.imageControl.Height = height;
-
-                int widthDelta = b.imageControl.Width - b.imageControl.DisplayRectangle.Width;
-                int heightDelta = b.imageControl.Height - b.imageControl.DisplayRectangle.Height;
-
-                b.imageControl.Width = width + widthDelta;
-                b.imageControl.Height = height + heightDelta;
-
-                b.imageControl.Margin = margin;
-            }
-
-            panelThumb.ResumeLayout();
-        }
 
         FileSystemWatcher fileWatcher = null;
         Timer timer;
@@ -140,7 +116,7 @@ namespace StoryboarderUtility
             public int RefCount = 0;
         }
 
-        Storyboard currStoryboard = new Storyboard() { ImageSize = ThumbDiagonalSize };
+        Storyboard currStoryboard = new Storyboard() { ImageDiagonalSize = ThumbDiagonalSize };
         
         Storyboard ParseStoryboard(string fileName) {
             string sbTxt = null;
@@ -165,6 +141,7 @@ namespace StoryboarderUtility
             MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(sbTxt));
             Storyboard storyboard = (Storyboard)js.ReadObject(stream);
             storyboard.filePath = fileName;
+            storyboard.ImageDiagonalSize = ThumbDiagonalSize;
             storyboard.PostLoad();
 
             return storyboard;
@@ -185,6 +162,11 @@ namespace StoryboarderUtility
             current.aspectRatioString = loaded.aspectRatioString;
             current.aspectRatio = loaded.aspectRatio;
 
+            float f = (float)(current.ImageDiagonalSize / Math.Sqrt(current.aspectRatio * current.aspectRatio + 1));
+            current.ImageWidth = (int)(current.aspectRatio * f);
+            current.ImageHeight = (int)f;
+
+
             foreach (var b in loaded.boards) {
                 LoadBoard(current, b);
             }
@@ -194,10 +176,7 @@ namespace StoryboarderUtility
             for (int i = 0; i < loaded.boards.Count; ++i)
                 uid2order.Add(loaded.boards[i].uid, i);
             current.boards.Sort((a, b) => uid2order[a.uid] - uid2order[b.uid]);
-
-            for (int i = 0; i < current.boards.Count; ++i)
-                panelThumb.Controls.SetChildIndex(current.boards[i].imageControl, i);
-
+            
 
             current.filePath = loaded.filePath;
             current.version = loaded.version;
@@ -207,6 +186,8 @@ namespace StoryboarderUtility
             current.lastModified = loaded.lastModified;
 
             current.UpdateHash();
+
+            panelThumb.Invalidate();
         }
 
 
@@ -214,10 +195,6 @@ namespace StoryboarderUtility
             sb.boardDict.Remove(board.uid);
             sb.boards.Remove(board);
 
-
-            panelThumb.Controls.Remove(board.imageControl);
-            board.imageControl.Dispose();
-            board.imageControl = null;
 
             board.image.Dispose();
             board.image = null;
@@ -257,23 +234,15 @@ namespace StoryboarderUtility
                     curBoard.image.Dispose();
 
                 //Bitmap bm = new Bitmap()
-                Image[] layerImages = (from l in curBoard.layers select Image.FromFile(l.filePath)).ToArray();
-                int maxWidth = layerImages.Length == 0 ? 0 : layerImages.Max(img => img.Width);
-                int maxHeight = layerImages.Length == 0 ? 0 : layerImages.Max(img => img.Height);
 
-                if (maxWidth == 0 || maxHeight == 0) {
-                    float f = (float)(sb.ImageSize / Math.Sqrt(sb.aspectRatio * sb.aspectRatio + 1));
-                    maxWidth = (int)(sb.aspectRatio * f);
-                    maxHeight = (int)f;
+                Image[] layerImages = new Image[curBoard.layers.Count];
+                for (int i = 0; i < layerImages.Length; ++i) {
+                    try { layerImages[i] = Image.FromFile(curBoard.layers[i].filePath); }
+                    catch (IOException) { }                        
                 }
 
-                float dgnl = (float)Math.Sqrt(maxWidth * maxWidth + maxHeight * maxHeight);
-                float scale = sb.ImageSize / dgnl;
-                int width = (int)(scale * maxWidth);
-                int height = (int)(scale * maxHeight);
-
-                curBoard.ImageWidth = width;
-                curBoard.ImageHeight = height;
+                int width = sb.ImageWidth;
+                int height = sb.ImageHeight;
 
                 Bitmap boardImage = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 using (var g = Graphics.FromImage(boardImage)) {
@@ -285,8 +254,11 @@ namespace StoryboarderUtility
                     Rectangle rect = new Rectangle(0, 0, width, height);
 
                     g.Clear(Color.White);
-                    foreach (var img in layerImages)
-                        g.DrawImage(img, rect);
+                    foreach (var img in layerImages) {
+                        if (img != null)
+                            g.DrawImage(img, rect);
+                    }
+                        
                 }
 
                 foreach (var img in layerImages)
@@ -294,16 +266,6 @@ namespace StoryboarderUtility
 
                 curBoard.image = boardImage;
 
-                
-                if (curBoard.imageControl == null) {
-                    curBoard.imageControl = new PictureBox();
-                    curBoard.imageControl.BorderStyle = BorderStyle.FixedSingle;
-                    curBoard.imageControl.SizeMode = PictureBoxSizeMode.StretchImage;
-
-                    panelThumb.Controls.Add(curBoard.imageControl);
-                }
-                curBoard.imageControl.Image = curBoard.image;
-                
 
 
             }
@@ -351,6 +313,124 @@ namespace StoryboarderUtility
 
 
             
+        }
+
+
+        private void panelThumb_Paint(object sender, PaintEventArgs e)
+        {
+            var clientRect = panelThumb.ClientRectangle;
+
+            int clientWidth = panelThumb.ClientSize.Width - SliderWidth;
+            int clientHeight = panelThumb.ClientSize.Height;
+
+            int margin = (int)(ThumbMargin * ImageDisplayScale);
+            int sideMargin = margin;
+            int dw = (int)(currStoryboard.ImageWidth * ImageDisplayScale);
+            int dh = (int)(currStoryboard.ImageHeight * ImageDisplayScale);
+
+            int columns = (int)Math.Floor(Math.Max(0, clientWidth - sideMargin * 2 - dw) / (float)(dw + margin)) + 1;
+            //int actualMargin = columns <= 1 ? 0 : (clientWidth - sideMargin * 2 - dw * columns) / (columns - 1);
+            int actualSideMargin = Math.Max(0, clientWidth - columns * dw - (columns - 1) * margin) / 2;
+
+            int rows = currStoryboard.boards.Count / columns;
+            if (currStoryboard.boards.Count % columns != 0)
+                rows += 1;
+
+            int areaHeight = sideMargin * 2 + margin + (dh + margin) * rows;
+
+            int yOffset = (int)(Math.Max(0, areaHeight - clientHeight) * scrollRatio);
+
+            Color brushColor = Color.FromArgb(255, (int)(Color.DimGray.R * 0.5f), (int)(Color.DimGray.G * 0.5f), (int)(Color.DimGray.B * 0.5f));
+
+            int shadowOffset = (int)(ThumbMargin / 2 * ImageDisplayScale);
+
+            using (Brush darkBrush = new SolidBrush(brushColor)) {
+                e.Graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+                for (int i = 0; i < currStoryboard.boards.Count; ++i) {
+                    int cidx = i % columns;
+                    int ridx = i / columns;
+
+                    var board = currStoryboard.boards[i];
+                    int x = actualSideMargin + cidx * (dw + margin);
+                    int y = sideMargin + ridx * (dh + margin) - yOffset;
+
+                    Rectangle rect = new Rectangle(x, y, dw, dh);
+                    Rectangle shadowRect = rect;
+                    //shadowRect.Inflate(ThumbMargin / 6, ThumbMargin / 6);
+                    shadowRect.X += shadowOffset;
+                    shadowRect.Y += shadowOffset;
+
+                    if (clientRect.IntersectsWith(rect)) {
+
+                        e.Graphics.FillRectangle(darkBrush, shadowRect);
+                        e.Graphics.DrawImage(board.image, rect);
+                        rect.Inflate(1, 1);
+                        e.Graphics.DrawRectangle(Pens.Black, rect);
+                    }
+                }
+            }
+
+
+            int sliderBarHeight = Math.Min(clientHeight, clientHeight * clientHeight / areaHeight);
+            int sliderBarY = (int)(((areaHeight - clientHeight) * scrollRatio / areaHeight) * clientHeight);
+
+            e.Graphics.FillRectangle(Brushes.Gray, new Rectangle(clientWidth, 0, SliderWidth, clientHeight));
+            e.Graphics.FillRectangle(Brushes.DarkGray, new Rectangle(clientWidth, sliderBarY, SliderWidth, sliderBarHeight));
+        }
+
+
+
+        float scrollRatio = 0;
+
+        float startScrollRatio = 0;
+        int startY = 0;
+        bool scrolling = false;
+
+        private void panelThumb_MouseDown(object sender, MouseEventArgs e)
+        {
+            startY = e.Y;
+            startScrollRatio = scrollRatio;
+            scrolling = true;
+        }
+
+        private void panelThumb_MouseUp(object sender, MouseEventArgs e)
+        {
+            scrolling = false;
+        }
+
+        private void panelThumb_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (scrolling) {
+                int clientHeight = panelThumb.ClientSize.Height;
+                int clientWidth = panelThumb.ClientSize.Width - SliderWidth;
+
+                int margin = (int)(ThumbMargin * ImageDisplayScale);
+                int sideMargin = margin;
+                int dw = (int)(currStoryboard.ImageWidth * ImageDisplayScale);
+                int dh = (int)(currStoryboard.ImageHeight * ImageDisplayScale);
+
+
+                int columns = (int)Math.Floor(Math.Max(0, clientWidth - sideMargin * 2 - dw) / (float)(dw + margin)) + 1;
+                int rows = currStoryboard.boards.Count / columns;
+                if (currStoryboard.boards.Count % columns != 0)
+                    rows += 1;
+
+                int areaHeight = sideMargin * 2 + margin + (dh + margin) * rows;
+
+                float deltaScroll = (float)(startY - e.Y) / Math.Max(0, areaHeight - clientHeight);
+
+                scrollRatio = startScrollRatio + deltaScroll;
+                scrollRatio = Math.Max(0, scrollRatio);
+                scrollRatio = Math.Min(1, scrollRatio);
+
+                panelThumb.Invalidate();
+            }
+
         }
     }
 }

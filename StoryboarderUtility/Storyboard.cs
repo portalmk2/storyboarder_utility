@@ -20,7 +20,10 @@ namespace StoryboarderUtility
 
         public float aspectRatio = 1;
 
-        public int ImageSize = 600;   //diagonal
+        public int ImageDiagonalSize = 600;   //diagonal
+
+        public int ImageWidth = 0;
+        public int ImageHeight = 0;
 
         [DataMember]
         public List<Board> boards = new List<Board>();
@@ -37,6 +40,8 @@ namespace StoryboarderUtility
         
 
         public void PostLoad() {
+            aspectRatio = float.Parse(aspectRatioString);
+
             boardsLastModified = new DateTime(0);
             boardDict = boards.ToDictionary(b => b.uid);
             foreach (var b in boards) {
@@ -44,8 +49,8 @@ namespace StoryboarderUtility
                 if (boardsLastModified > b.lastModified)
                     boardsLastModified = b.lastModified;
             }
-            aspectRatio = float.Parse(aspectRatioString);
-                
+
+
 
             storyboardLastModified = System.IO.File.GetLastWriteTime(filePath);
             lastModified = boardsLastModified > storyboardLastModified ? boardsLastModified : storyboardLastModified;
@@ -95,11 +100,11 @@ namespace StoryboarderUtility
         public Dictionary<string, Layer> layerDict = new Dictionary<string, Layer>();
         public List<Layer> layers = new List<Layer>();
 
-        public int ImageWidth = 0;
-        public int ImageHeight = 0;
+        //public int ImageWidth = 0;
+        //public int ImageHeight = 0;
+        //public int x, y;
 
         public System.Drawing.Image image;
-        public System.Windows.Forms.PictureBox imageControl;
 
         public DateTime lastModified;
 

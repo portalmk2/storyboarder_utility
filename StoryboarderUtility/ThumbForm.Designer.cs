@@ -35,9 +35,9 @@
             this.panelScale = new System.Windows.Forms.Panel();
             this.lblScale = new System.Windows.Forms.Label();
             this.scaleSlider = new System.Windows.Forms.TrackBar();
-            this.panelThumb = new System.Windows.Forms.FlowLayoutPanel();
             this.statusBar = new System.Windows.Forms.StatusStrip();
             this.statusFileNameLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.panelThumb = new System.Windows.Forms.Panel();
             this.toolBar.SuspendLayout();
             this.panelScale.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.scaleSlider)).BeginInit();
@@ -124,6 +124,7 @@
             this.scaleSlider.Dock = System.Windows.Forms.DockStyle.Right;
             this.scaleSlider.Location = new System.Drawing.Point(42, 0);
             this.scaleSlider.Margin = new System.Windows.Forms.Padding(0, 3, 0, 0);
+            this.scaleSlider.Minimum = 1;
             this.scaleSlider.Name = "scaleSlider";
             this.scaleSlider.Size = new System.Drawing.Size(115, 20);
             this.scaleSlider.TabIndex = 3;
@@ -131,18 +132,6 @@
             this.scaleSlider.TickStyle = System.Windows.Forms.TickStyle.None;
             this.scaleSlider.Value = 5;
             this.scaleSlider.Scroll += new System.EventHandler(this.scaleSlider_Scroll);
-            // 
-            // panelThumb
-            // 
-            this.panelThumb.AutoScroll = true;
-            this.panelThumb.BackColor = System.Drawing.Color.DimGray;
-            this.panelThumb.BackgroundImage = global::StoryboarderUtility.Properties.Resources.photo_256;
-            this.panelThumb.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.panelThumb.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.panelThumb.Location = new System.Drawing.Point(0, 26);
-            this.panelThumb.Name = "panelThumb";
-            this.panelThumb.Size = new System.Drawing.Size(597, 361);
-            this.panelThumb.TabIndex = 3;
             // 
             // statusBar
             // 
@@ -159,13 +148,29 @@
             this.statusFileNameLabel.Name = "statusFileNameLabel";
             this.statusFileNameLabel.Size = new System.Drawing.Size(0, 17);
             // 
+            // panelThumb
+            // 
+            this.panelThumb.BackColor = System.Drawing.Color.DimGray;
+            this.panelThumb.BackgroundImage = global::StoryboarderUtility.Properties.Resources.photo_256;
+            this.panelThumb.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.panelThumb.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panelThumb.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelThumb.Location = new System.Drawing.Point(0, 26);
+            this.panelThumb.Name = "panelThumb";
+            this.panelThumb.Size = new System.Drawing.Size(597, 362);
+            this.panelThumb.TabIndex = 6;
+            this.panelThumb.Paint += new System.Windows.Forms.PaintEventHandler(this.panelThumb_Paint);
+            this.panelThumb.MouseDown += new System.Windows.Forms.MouseEventHandler(this.panelThumb_MouseDown);
+            this.panelThumb.MouseMove += new System.Windows.Forms.MouseEventHandler(this.panelThumb_MouseMove);
+            this.panelThumb.MouseUp += new System.Windows.Forms.MouseEventHandler(this.panelThumb_MouseUp);
+            // 
             // ThumbForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(597, 410);
-            this.Controls.Add(this.statusBar);
             this.Controls.Add(this.panelThumb);
+            this.Controls.Add(this.statusBar);
             this.Controls.Add(this.toolBar);
             this.Name = "ThumbForm";
             this.Text = "ThumbView";
@@ -188,10 +193,10 @@
         private System.Windows.Forms.Label lblScale;
         private System.Windows.Forms.TrackBar scaleSlider;
         private System.Windows.Forms.Panel panelScale;
-        private System.Windows.Forms.FlowLayoutPanel panelThumb;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.StatusStrip statusBar;
         private System.Windows.Forms.ToolStripStatusLabel statusFileNameLabel;
+        private System.Windows.Forms.Panel panelThumb;
     }
 }
 
