@@ -312,14 +312,90 @@ namespace StoryboarderUtility
                 return;
 
 
-            
+
+            int clientWidth = panelThumb.ClientSize.Width - SliderWidth;
+
+            int margin = (int)(ThumbMargin * ImageDisplayScale);
+            int sideMargin = margin;
+            int dw = (int)(currStoryboard.ImageWidth * ImageDisplayScale);
+            int dh = (int)(currStoryboard.ImageHeight * ImageDisplayScale);
+
+            int columns = (int)Math.Floor(Math.Max(0, clientWidth - sideMargin * 2 - dw) / (float)(dw + margin)) + 1;
+
+            int rows = currStoryboard.boards.Count / columns;
+            if (currStoryboard.boards.Count % columns != 0)
+                rows += 1;
+
+            int areaHeight = sideMargin * 2 + margin + (dh + margin) * rows;
+            int areaWidth = sideMargin * 2 + margin + (dw + margin) * columns;
+
+            Bitmap bm = new Bitmap(areaWidth, areaHeight);
+
+            using (var g = Graphics.FromImage(bm)) {
+                g.Clear(Color.DimGray);
+                DrawThumbs(g, areaWidth, 0);
+            }
+
+            bm.Save(sfd.FileName);
+
         }
 
 
+        void DrawThumbs(Graphics g, int targetWidth, int yOffset) {
+            int clientWidth = targetWidth;
+
+            int margin = (int)(ThumbMargin * ImageDisplayScale);
+            int sideMargin = margin;
+            int dw = (int)(currStoryboard.ImageWidth * ImageDisplayScale);
+            int dh = (int)(currStoryboard.ImageHeight * ImageDisplayScale);
+
+            int columns = (int)Math.Floor(Math.Max(0, clientWidth - sideMargin * 2 - dw) / (float)(dw + margin)) + 1;
+            int actualSideMargin = Math.Max(0, clientWidth - columns * dw - (columns - 1) * margin) / 2;
+
+            int rows = currStoryboard.boards.Count / columns;
+            if (currStoryboard.boards.Count % columns != 0)
+                rows += 1;
+
+            int areaHeight = sideMargin * 2 + margin + (dh + margin) * rows;
+
+            g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+
+            //Color brushColor = Color.FromArgb(255, (int)(Color.DimGray.R * 0.5f), (int)(Color.DimGray.G * 0.5f), (int)(Color.DimGray.B * 0.5f));
+            Color brushColor = Color.FromArgb(128, 0, 0, 0);
+            int shadowOffset = (int)(ThumbMargin / 2 * ImageDisplayScale);
+
+            using (Brush darkBrush = new SolidBrush(brushColor)) {
+                for (int i = 0; i < currStoryboard.boards.Count; ++i) {
+                    int cidx = i % columns;
+                    int ridx = i / columns;
+
+                    var board = currStoryboard.boards[i];
+                    int x = actualSideMargin + cidx * (dw + margin);
+                    int y = sideMargin + ridx * (dh + margin) - yOffset;
+
+                    Rectangle rect = new Rectangle(x, y, dw, dh);
+                    Rectangle shadowRect = rect;
+                    shadowRect.X += shadowOffset;
+                    shadowRect.Y += shadowOffset;
+
+                    g.FillRectangle(darkBrush, shadowRect);
+                    g.DrawImage(board.image, rect);
+                    rect.Inflate(1, 1);
+                    g.DrawRectangle(Pens.Black, rect);
+                }
+            }
+
+
+        }
+
+        /*
         private void panelThumb_Paint(object sender, PaintEventArgs e)
         {
-            var clientRect = panelThumb.ClientRectangle;
-
             int clientWidth = panelThumb.ClientSize.Width - SliderWidth;
             int clientHeight = panelThumb.ClientSize.Height;
 
@@ -365,15 +441,46 @@ namespace StoryboarderUtility
                     shadowRect.X += shadowOffset;
                     shadowRect.Y += shadowOffset;
 
-                    if (clientRect.IntersectsWith(rect)) {
-
-                        e.Graphics.FillRectangle(darkBrush, shadowRect);
-                        e.Graphics.DrawImage(board.image, rect);
-                        rect.Inflate(1, 1);
-                        e.Graphics.DrawRectangle(Pens.Black, rect);
-                    }
+                    e.Graphics.FillRectangle(darkBrush, shadowRect);
+                    e.Graphics.DrawImage(board.image, rect);
+                    rect.Inflate(1, 1);
+                    e.Graphics.DrawRectangle(Pens.Black, rect);
                 }
             }
+
+
+            int sliderBarHeight = Math.Min(clientHeight, clientHeight * clientHeight / areaHeight);
+            int sliderBarY = (int)(((areaHeight - clientHeight) * scrollRatio / areaHeight) * clientHeight);
+
+            e.Graphics.FillRectangle(Brushes.Gray, new Rectangle(clientWidth, 0, SliderWidth, clientHeight));
+            e.Graphics.FillRectangle(Brushes.DarkGray, new Rectangle(clientWidth, sliderBarY, SliderWidth, sliderBarHeight));
+        }
+        */
+
+            
+        private void panelThumb_Paint(object sender, PaintEventArgs e)
+        {
+            int clientWidth = panelThumb.ClientSize.Width - SliderWidth;
+            int clientHeight = panelThumb.ClientSize.Height;
+
+            int margin = (int)(ThumbMargin * ImageDisplayScale);
+            int sideMargin = margin;
+            int dw = (int)(currStoryboard.ImageWidth * ImageDisplayScale);
+            int dh = (int)(currStoryboard.ImageHeight * ImageDisplayScale);
+
+            int columns = (int)Math.Floor(Math.Max(0, clientWidth - sideMargin * 2 - dw) / (float)(dw + margin)) + 1;
+
+            int rows = currStoryboard.boards.Count / columns;
+            if (currStoryboard.boards.Count % columns != 0)
+                rows += 1;
+
+            int areaHeight = sideMargin * 2 + margin + (dh + margin) * rows;
+
+            int yOffset = (int)(Math.Max(0, areaHeight - clientHeight) * scrollRatio);
+
+            Color brushColor = Color.FromArgb(255, (int)(Color.DimGray.R * 0.5f), (int)(Color.DimGray.G * 0.5f), (int)(Color.DimGray.B * 0.5f));
+
+            DrawThumbs(e.Graphics, clientWidth, yOffset);
 
 
             int sliderBarHeight = Math.Min(clientHeight, clientHeight * clientHeight / areaHeight);
